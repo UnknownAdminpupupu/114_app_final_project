@@ -1,5 +1,6 @@
 package com.example.lifesync
 
+import android.app.DatePickerDialog
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -23,6 +24,7 @@ import retrofit2.Callback
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.Calendar
 import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
@@ -34,11 +36,6 @@ class MainActivity : AppCompatActivity() {
 
     private var selectedDuration: Long = 25 * 60 * 1000L
 
-<<<<<<< HEAD
-
-
-=======
->>>>>>> 71c7ac4b0b458ddac76346daa5aa8056ca1720e2
     private val timerReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
@@ -56,11 +53,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-<<<<<<< HEAD
-
-
-=======
->>>>>>> 71c7ac4b0b458ddac76346daa5aa8056ca1720e2
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         try {
@@ -75,7 +67,9 @@ class MainActivity : AppCompatActivity() {
         // ★★★ 呼叫天氣 API ★★★
         fetchWeatherData()
 
+        // ✅ 新增任務：改成「輸入 → 月曆選 DDL/略過」
         binding.fabAddTask.setOnClickListener { showAddTaskDialog() }
+
         binding.btnStartTimer.setOnClickListener { startFocusTimer() }
         binding.btnStats.setOnClickListener { startActivity(Intent(this, StatsActivity::class.java)) }
         binding.timerCard.setOnClickListener { showTimePickerDialog() }
@@ -104,9 +98,7 @@ class MainActivity : AppCompatActivity() {
     private fun loadTasksSafely() {
         try {
             db.collection("tasks").addSnapshotListener { snapshots, e ->
-                if (e != null) {
-                    return@addSnapshotListener
-                }
+                if (e != null) return@addSnapshotListener
                 if (snapshots != null) {
                     taskList.clear()
                     for (doc in snapshots) {
@@ -153,13 +145,20 @@ class MainActivity : AppCompatActivity() {
         Toast.makeText(this, "計時器已啟動", Toast.LENGTH_SHORT).show()
     }
 
+    // =========================
+    // ✅ 新增任務：輸入 → 選 DDL / 略過
+    // =========================
+
     private fun showAddTaskDialog() {
         val context = this
+
         val layout = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(50, 40, 50, 10)
         }
+
         val editText = EditText(context).apply { hint = "輸入待辦事項..." }
+
         val radioGroup = RadioGroup(context).apply { orientation = RadioGroup.HORIZONTAL }
         val rbStudy = RadioButton(context).apply { text = "學習"; id = 1; isChecked = true }
         val rbWork = RadioButton(context).apply { text = "工作"; id = 2 }
@@ -168,26 +167,99 @@ class MainActivity : AppCompatActivity() {
         radioGroup.addView(rbStudy)
         radioGroup.addView(rbWork)
         radioGroup.addView(rbLife)
+
         layout.addView(editText)
         layout.addView(radioGroup)
 
-        AlertDialog.Builder(context)
+        // 用 create + setOnShowListener，才能避免空白也關閉 dialog
+        val dialog = AlertDialog.Builder(context)
             .setTitle("新增任務")
             .setView(layout)
-            .setPositiveButton("新增") { _, _ ->
-                val title = editText.text.toString()
-                val category = when(radioGroup.checkedRadioButtonId) {
+            .setPositiveButton("下一步", null)
+            .setNegativeButton("取消", null)
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val title = editText.text.toString().trim()
+                val category = when (radioGroup.checkedRadioButtonId) {
                     2 -> "工作"
                     3 -> "生活"
                     else -> "學習"
                 }
-                if (title.isNotEmpty()) {
-                    val newTask = hashMapOf("title" to title, "isCompleted" to false, "category" to category)
-                    db.collection("tasks").add(newTask)
+
+                if (title.isEmpty()) {
+                    Toast.makeText(context, "待辦事項不能空白", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
                 }
+
+                dialog.dismiss()
+                showDeadlinePickerOrSkip(title, category)
             }
-            .setNegativeButton("取消", null).show()
+        }
+
+        dialog.show()
     }
+
+    private fun showDeadlinePickerOrSkip(title: String, category: String) {
+        val now = Calendar.getInstance()
+
+        val dp = DatePickerDialog(
+            this,
+            { _, year, month, dayOfMonth ->
+                val ddl = Calendar.getInstance().apply {
+                    set(Calendar.YEAR, year)
+                    set(Calendar.MONTH, month)
+                    set(Calendar.DAY_OF_MONTH, dayOfMonth)
+                    set(Calendar.HOUR_OF_DAY, 23)
+                    set(Calendar.MINUTE, 59)
+                    set(Calendar.SECOND, 59)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                insertTaskToFirestore(title, category, ddl.timeInMillis)
+            },
+            now.get(Calendar.YEAR),
+            now.get(Calendar.MONTH),
+            now.get(Calendar.DAY_OF_MONTH)
+        )
+
+        dp.setTitle("選擇截止日期（DDL）")
+
+        // 略過：deadlineAt = 0L（未設定）
+        dp.setButton(DatePickerDialog.BUTTON_NEGATIVE, "略過") { _, _ ->
+            insertTaskToFirestore(title, category, 0L)
+        }
+
+        // 取消：不新增
+        dp.setButton(DatePickerDialog.BUTTON_NEUTRAL, "取消") { _, _ ->
+            // do nothing
+        }
+
+        dp.show()
+    }
+
+    private fun insertTaskToFirestore(title: String, category: String, deadlineAt: Long) {
+        val newTask = hashMapOf(
+            "title" to title,
+            "isCompleted" to false,
+            "category" to category,
+            "deadlineAt" to deadlineAt,
+            "createdAt" to System.currentTimeMillis()
+        )
+
+        db.collection("tasks")
+            .add(newTask)
+            .addOnSuccessListener {
+                Toast.makeText(this, "已新增", Toast.LENGTH_SHORT).show()
+            }
+            .addOnFailureListener { e ->
+                Toast.makeText(this, "新增失敗：${e.message}", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    // =========================
+    // RecyclerView / 刪除 / 動畫
+    // =========================
 
     private fun setupRecyclerView() {
         adapter = TaskAdapter(taskList) { position ->
@@ -209,7 +281,10 @@ class MainActivity : AppCompatActivity() {
         binding.lottieAnimationView.playAnimation()
     }
 
-    // ★★★ 簡報專用版：失敗時優雅切換展示數據，不跳出錯誤 ★★★
+    // =========================
+    // Weather
+    // =========================
+
     private fun fetchWeatherData() {
         val retrofit = Retrofit.Builder()
             .baseUrl("https://api.openweathermap.org/data/2.5/")
@@ -217,8 +292,8 @@ class MainActivity : AppCompatActivity() {
             .build()
         val service = retrofit.create(WeatherApiService::class.java)
 
-        // 請務必確認這裡的 API Key 是你剛剛申請的那組
-        val apiKey = "3e8122c3f5ccd87a0ee1a9fc0bc201a1"
+        // TODO：換成你自己的 OpenWeather API Key
+        val apiKey = "YOUR_OPENWEATHER_API_KEY"
 
         val call = service.getWeather("Taipei", apiKey, "metric")
 
@@ -228,14 +303,11 @@ class MainActivity : AppCompatActivity() {
                     val temp = response.body()?.main?.temp
                     binding.tvWeather.text = "${temp}°C"
                 } else {
-                    // API 失敗 (401 尚未生效 / Key 錯誤)
-                    // Log 錯誤給開發者看，但介面上顯示漂亮的展示數據
                     Log.e("Weather", "API Error ${response.code()}: Key invalid or not active yet.")
                     binding.tvWeather.text = "23.5°C"
                 }
             }
             override fun onFailure(call: Call<WeatherResponse>, t: Throwable) {
-                // 網路失敗
                 Log.e("Weather", "Network Fail: ${t.message}")
                 binding.tvWeather.text = "23.5°C"
             }

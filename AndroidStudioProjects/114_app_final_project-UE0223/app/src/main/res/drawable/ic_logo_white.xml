@@ -1,0 +1,11 @@
+<!-- 這是現代風格的「雙勾勾」Logo 圖示 (白色) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#FFFFFF">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M16.59,7.58L10,14.17L7.41,11.59L6,13L10,17L18,9L16.59,7.58M5,13H3V3H13V5H5V13M21,3V15H11V17H21C22.11,17 23,16.1 23,15V3C23,1.9 22.11,1 21,1H11C9.9,1 9,1.9 9,3V5H11V3H21Z" />
+</vector>
