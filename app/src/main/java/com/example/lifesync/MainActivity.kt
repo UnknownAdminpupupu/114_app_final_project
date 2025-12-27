@@ -34,6 +34,11 @@ class MainActivity : AppCompatActivity() {
 
     private var selectedDuration: Long = 25 * 60 * 1000L
 
+<<<<<<< HEAD
+
+
+=======
+>>>>>>> 71c7ac4b0b458ddac76346daa5aa8056ca1720e2
     private val timerReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
@@ -51,6 +56,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+<<<<<<< HEAD
+
+
+=======
+>>>>>>> 71c7ac4b0b458ddac76346daa5aa8056ca1720e2
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         try {
