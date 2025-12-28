@@ -1,9 +1,15 @@
+import java.util.Properties // 1. 新增：引入 Properties 類別
+import java.io.FileInputStream // 1. 新增：引入 FileInputStream
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.gms.google-services")
 }
-
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(FileInputStream(localPropertiesFile))
+}
 android {
     namespace = "com.example.lifesync"
     compileSdk = 34
@@ -15,9 +21,12 @@ android {
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        val weatherKey = localProperties.getProperty("OPEN_WEATHER_KEY") ?: ""
+        buildConfigField("String", "WEATHER_API_KEY", "\"$weatherKey\"")
     }
 
     buildFeatures {
+        buildConfig = true
         viewBinding = true
     }
 
