@@ -69,6 +69,11 @@ class MainActivity : AppCompatActivity() {
         binding.btnStartTimer.setOnClickListener { startFocusTimer() }
         binding.btnStats.setOnClickListener { startActivity(Intent(this, StatsActivity::class.java)) }
         binding.timerCard.setOnClickListener { showTimePickerDialog() }
+        // 1. 取得 Key
+        val apiKey = BuildConfig.WEATHER_API_KEY
+
+        // 2. 測試印出 (可在 Logcat 看到)
+        Log.d("MainActivity", "My API Key is: $apiKey")
 
         loadTasksSafely()
     }
@@ -208,9 +213,8 @@ class MainActivity : AppCompatActivity() {
         val service = retrofit.create(WeatherApiService::class.java)
 
         // 請務必確認這裡的 API Key 是你剛剛申請的那組
-        val apiKey = "3e8122c3f5ccd87a0ee1a9fc0bc201a1"
 
-        val call = service.getWeather("Taipei", apiKey, "metric")
+        val call = service.getWeather("Taipei", BuildConfig.WEATHER_API_KEY, "metric")
 
         call.enqueue(object : Callback<WeatherResponse> {
             override fun onResponse(call: Call<WeatherResponse>, response: Response<WeatherResponse>) {
